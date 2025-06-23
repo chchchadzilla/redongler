@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Redongler™ - No Dongle Left Behind</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3.11.4/dist/gsap.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/smooth-scrollbar@8.8.1/dist/smooth-scrollbar.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=VT323&family=Silkscreen&display=swap');
+        
+        :root {
+            --primary: #ff3366;
+            --secondary: #33ffcc;
+            --accent: #ffcc33;
+            --dark: #111111;
+            --light: #f8f8f8;
+        }
+        
+        body {
+            font-family: 'VT323', monospace;
+            color: var(--light);
+            overflow-x: hidden;
+            cursor: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><path fill='%23ff3366' d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z'/><path fill='%2333ffcc' d='M12 7c-2.76 0-5 2.24-5 5s2.24 5 5 5 5-2.24 5-5-2.24-5-5-5zm0 8c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3z'/></svg>"), auto;
+        }
+        
+        .press-start {
+            font-family: 'Press Start 2P', cursive;
+        }
+        
+        .silkscreen {
+            font-family: 'Silkscreen', cursive;
+        }
+        
+        .vignette {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        .glitch {
+            position: relative;
+        }
+        
+        .glitch::before, .glitch::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0.8;
+        }
+        
+        .glitch::before {
+            color: var(--secondary);
+            z-index: -1;
+            animation: glitch-effect 3s infinite;
+        }
+        
+        .glitch::after {
+            color: var(--accent);
+            z-index: -2;
+            animation: glitch-effect 2s infinite reverse;
+        }
+        
+        @keyframes glitch-effect {
+            0% { transform: translate(0); }
+            20% { transform: translate(-3px, 3px); }
+            40% { transform: translate(-3px, -3px); }
+            60% { transform: translate(3px, 3px); }
+            80% { transform: translate(3px, -3px); }
+            100% { transform: translate(0); }
+        }
+        
+        .pixel-corners {
+            clip-path: polygon(
+                0% 5px, 5px 5px, 5px 0%, calc(100% - 5px) 0%, 
+                calc(100% - 5px) 5px, 100% 5px, 100% calc(100% - 5px), 
+                calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 
+                5px 100%, 5px calc(100% - 5px), 0% calc(100% - 5px)
+            );
+        }
+        
+        .mouse-follower {
+            position: fixed;
+            width: 20px;
+            height: 20px;
+            background-color: var(--primary);
+            border-radius: 50%;
+            pointer-events: none;
+            mix-blend-mode: screen;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+        }
+        
+        .scroll-indicator {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0) translateX(-50%); }
+            40% { transform: translateY(-20px) translateX(-50%); }
+            60% { transform: translateY(-10px) translateX(-50%); }
+        }
+        
+        #threejs-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -2;
+        }
+        
+        .nav-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--light);
+            transition: all 0.3s ease;
+        }
+        
+        .nav-dot.active {
+            background-color: var(--primary);
+            transform: scale(1.5);
+        }
+        
+        .mouse-icon {
+            animation: float 3s ease-in-out infinite;
+        }
+        
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-15px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        .typewriter {
+            overflow: hidden;
+            border-right: 3px solid var(--primary);
+            white-space: nowrap;
+            animation: typing 3.5s steps(40, end), blink-caret 0.75s step-end infinite;
+        }
+        
+        @keyframes typing {
+            from { width: 0 }
+            to { width: 100% }
+        }
+        
+        @keyframes blink-caret {
+            from, to { border-color: transparent }
+            50% { border-color: var(--primary) }
+        }
+        
+        .btn-primary {
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 10px 20px rgba(255, 51, 102, 0.3);
+        }
+        
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: all 0.5s ease;
+        }
+        
+        .btn-primary:hover::before {
+            left: 100%;
+        }
+        
+        .feature-card {
+            transition: all 0.3s ease;
+            transform-style: preserve-3d;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px) rotateX(5deg);
+            box-shadow: 0 20px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .pixel-border {
+            position: relative;
+        }
+        
+        .pixel-border::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border: 2px solid var(--primary);
+            clip-path: polygon(
+                0% 5px, 5px 5px, 5px 0%, calc(100% - 5px) 0%, 
+                calc(100% - 5px) 5px, 100% 5px, 100% calc(100% - 5px), 
+                calc(100% - 5px) calc(100% - 5px), calc(100% - 5px) 100%, 
+                5px 100%, 5px calc(100% - 5px), 0% calc(100% - 5px)
+            );
+            pointer-events: none;
+        }
+        
+        .terminal {
+            background-color: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--primary);
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            position: relative;
+        }
+        
+        .terminal-header {
+            background-color: var(--dark);
+            padding: 5px 10px;
+            border-bottom: 1px solid var(--primary);
+            display: flex;
+            align-items: center;
+        }
+        
+        .terminal-btn {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+        
+        .terminal-body {
+            padding: 15px;
+            overflow: hidden;
+        }
+        
+        .terminal-line {
+            margin-bottom: 5px;
+            line-height: 1.5;
+        }
+        
+        .terminal-cursor {
+            display: inline-block;
+            width: 10px;
+            height: 15px;
+            background-color: var(--primary);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+        
+        @keyframes blink {
+            from, to { opacity: 1 }
+            50% { opacity: 0 }
+        }
+        
+        .scrollbar-track {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+        
+        .scrollbar-thumb {
+            background: var(--primary) !important;
+        }
+    </style>
+</head>
+<body class="bg-black text-white overflow-hidden">
+    <!-- Mouse follower -->
+    <div class="mouse-follower"></div>
+    
+    <!-- Three.js Background -->
+    <div id="threejs-container"></div>
+    
+    <!-- Vignette effect -->
+    <div class="vignette"></div>
+    
+    <!-- Navigation dots -->
+    <div class="fixed right-8 top-1/2 transform -translate-y-1/2 flex flex-col gap-4 z-50">
+        <div class="nav-dot active" data-section="hero"></div>
+        <div class="nav-dot" data-section="about"></div>
+        <div class="nav-dot" data-section="features"></div>
+        <div class="nav-dot" data-section="ecosystem"></div>
+        <div class="nav-dot" data-section="coming-soon"></div>
+    </div>
+    
+    <!-- Main content -->
+    <div class="scroll-container w-full h-screen overflow-y-auto">
+        <!-- Hero Section -->
+        <section id="hero" class="min-h-screen flex flex-col justify-center items-center relative px-4">
+            <div class="text-center max-w-4xl mx-auto">
+                <div class="flex justify-center mb-8">
+                    <div class="mouse-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary">
+                            <rect x="5" y="2" width="14" height="20" rx="7"></rect>
+                            <path d="M12 6v4"></path>
+                        </svg>
+                    </div>
+                </div>
+                
+                <h1 class="text-6xl md:text-8xl font-bold mb-6 press-start text-primary glitch" data-text="THE REDONGLER™">
+                    THE REDONGLER™
+                </h1>
+                
+                <p class="text-xl md:text-2xl mb-8 silkscreen text-secondary">
+                    > <span class="typewriter">No Dongle Left Behind.</span>
+                </p>
+                
+                <div class="terminal max-w-lg mx-auto mb-12">
+                    <div class="terminal-header">
+                        <div class="terminal-btn bg-red-500"></div>
+                        <div class="terminal-btn bg-yellow-500"></div>
+                        <div class="terminal-btn bg-green-500"></div>
+                        <span class="text-xs ml-2">redongler.exe</span>
+                    </div>
+                    <div class="terminal-body">
+                        <div class="terminal-line"><span class="text-green-400">user@redongler:~$</span> sudo ./redongle.sh</div>
+                        <div class="terminal-line">Initializing Redongler protocol...</div>
+                        <div class="terminal-line">Scanning for orphaned peripherals...</div>
+                        <div class="terminal-line">Found 3 abandoned mice in the drawer of shame</div>
+                        <div class="terminal-line">Rewriting firmware...<span class="terminal-cursor"></span></div>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap justify-center gap-4">
+                    <a href="https://docs.google.com/forms/d/e/1FAIpQLScz6zmcJd4iIQn6llY03oxlVa1b39d2apfIBth19H7HPf7P0g/viewform?usp=sharing&ouid=107867435674576654181" class="btn-primary px-8 py-3 bg-primary text-white font-bold rounded-md silkscreen text-lg">
+                        GET NOTIFIED
+                    </a>
+                    <a href="#features" class="px-8 py-3 border-2 border-primary text-primary font-bold rounded-md silkscreen text-lg hover:bg-primary hover:text-white transition-all">
+                        LEARN MORE
+                    </a>
+                </div>
+            </div>
+            
+            <div class="scroll-indicator">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-primary animate-bounce">
+                    <path d="M12 5v14M19 12l-7 7-7-7"/>
+                </svg>
+            </div>
+        </section>
+        
+        <!-- About Section -->
+        <section id="about" class="min-h-screen flex flex-col justify-center items-center px-8 py-20">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl md:text-6xl font-bold mb-12 press-start text-center text-primary">
+                    WHO IS THE REDONGLER™?
+                </h2>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                    <div class="relative">
+                        <div class="pixel-border">
+                            <img src="https://i.postimg.cc/fywRPbWG/00005.png" alt="The Redongler" class="w-full h-auto">
+                        </div>
+                        <div class="absolute-bottom-6 -right-6 bg-primary text-dark px-4 py-2 silkscreen text-lg">
+                            <span class="text-2xl">"</span>He works in the shadows...<span class="text-2xl">"</span>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <p class="text-xl mb-6 leading-relaxed">
+                            A tiny, shadowy mouse character (probably wearing a beanie) - Tech burglar archetype — except he steals your "broken" mice/keyboards/peripherals  and leaves working gear.
+                        </p>
+                        
+                        <p class="text-xl mb-6 leading-relaxed">
+                            And, so, your orphaned wireless peripherals, while you sleep, are "REDONGLED". Maybe he rides a tiny Roomba and carries flash drives like throwing knives... or a mini motorcycle.
+                        </p>
+                        
+                        <p class="text-xl mb-8 leading-relaxed">
+                            OR he's just a feral little tinkerer underground, with soldering goggles and an old toaster he uses to program dongles. Or maybe that's just what you tell your kids.
+                        </p>
+                        
+                        <div class="bg-dark p-6 border-l-4 border-primary">
+                            <p class="text-secondary italic text-lg">
+                                "Basically, if Remy from Ratatouille learned to vibe code and thought he was hot s**t."
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Features Section -->
+        <section id="features" class="min-h-screen py-20 px-8">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 press-start text-center text-primary">
+                    FEATURES
+                </h2>
+                
+                <p class="text-xl text-center mb-16 max-w-3xl mx-auto">
+                    The Redongler™ nukes and overwrites the old proprietary flashing of RF 2.4g peripheral devices and encodes a new mouse OS that gives you superpowers.
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Feature 1 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-microchip"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Dongle Resurrection</h3>
+                        <p class="text-light">
+                            Bring dead dongles back to life. Pair multiple mice to one dongle or one mouse to multiple dongles. The choice is yours.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 2 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-magic"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Button Alchemy</h3>
+                        <p class="text-light">
+                            Reprogram any button combination. Triple clicks? All three buttons at once? Up to 8-button mice supported. Make it do what you want.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 3 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-unlock-alt"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Open Source Firmware</h3>
+                        <p class="text-light">
+                            No more proprietary nonsense. Flash open-source firmware that you can modify and extend to your heart's content.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 4 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-recycle"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Zero Waste Hacking</h3>
+                        <p class="text-light">
+                            Save perfectly good hardware from landfills. The Redongler™ believes in right-to-repair and sustainable tech.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 5 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-user-secret"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Stealth Mode</h3>
+                        <p class="text-light">
+                            Works while you sleep. Leave your broken mice out at night and wake up to find them... redongled.
+                        </p>
+                    </div>
+                    
+                    <!-- Feature 6 -->
+                    <div class="feature-card bg-dark p-8 rounded-lg">
+                        <div class="text-primary text-4xl mb-4">
+                            <i class="fas fa-ghost"></i>
+                        </div>
+                        <h3 class="text-2xl font-bold mb-3 silkscreen">Urban Legend</h3>
+                        <p class="text-light">
+                            Become part of the myth. The Redongler™ isn't just a tool, it's a story about the tech we wish existed.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Ecosystem Section -->
+        <section id="ecosystem" class="min-h-screen py-20 px-8">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl md:text-6xl font-bold mb-6 press-start text-center text-primary">
+                    THE ECOSYSTEM
+                </h2>
+                
+                <p class="text-xl text-center mb-16 max-w-3xl mx-auto">
+                    The Redongler™ is more than just a tool—it's a movement. Here's what we're building:
+                </p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    <!-- Product 1 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-primary">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-primary">🐭 The Redongler™ Board</h3>
+                        <p class="text-light mb-4">
+                            HID emulator with nRF24L01+ preflashed. The heart of the operation.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">IN DEVELOPMENT</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 2 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-secondary">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-secondary">💣 The Super Duper Mouse Dongle Nuker 5000</h3>
+                        <p class="text-light mb-4">
+                            DIY flashing rig for devs who want to go deeper into the rabbit hole.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">PROTOTYPE</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 3 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-accent">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-accent">👜 The Periph Purse</h3>
+                        <p class="text-light mb-4">
+                            Padded bag to store and organize your old orphaned devices until they can be redongled.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">DESIGN PHASE</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 4 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-primary">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-primary">🧙‍♂️ Redongle Cloak</h3>
+                        <p class="text-light mb-4">
+                            Dev hoodie merch. No dignity required. Just pure redongling energy.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">IDEA</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 5 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-secondary">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-secondary">📦 DeadMice Starter Kit</h3>
+                        <p class="text-light mb-4">
+                            Includes 2 boards, firmware, stickers, USB. Everything to begin your redongling journey.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">PLANNED</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Product 6 -->
+                    <div class="bg-dark p-6 rounded-lg border-t-4 border-accent">
+                        <h3 class="text-xl font-bold mb-3 silkscreen text-accent">📜 The Legend</h3>
+                        <p class="text-light mb-4">
+                            The story of The Redongler™ grows with each device saved. Add your chapter.
+                        </p>
+                        <div class="text-secondary text-sm">
+                            STATUS: <span class="text-primary">ONGOING</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-16 bg-dark p-8 rounded-lg border-l-4 border-primary max-w-4xl mx-auto">
+                    <h3 class="text-2xl font-bold mb-4 silkscreen text-primary text-center">REAL AD COPY THAT ALREADY WRITES ITSELF:</h3>
+                    <p class="text-xl text-center mb-4 italic">
+                        "Lost your mouse dongle again? The Redongler™ hasn't."
+                    </p>
+                    <p class="text-xl text-center mb-4 italic">
+                        "DIY wireless peripheral resurrection for the wireless era."
+                    </p>
+                    <p class="text-xl text-center italic">
+                        "You know that one drawer you're afraid to open? So does he."
+                    </p>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Coming Soon Section -->
+        <section id="coming-soon" class="min-h-screen flex flex-col justify-center items-center px-8 py-20">
+            <div class="max-w-4xl mx-auto text-center">
+                <h2 class="text-4xl md:text-6xl font-bold mb-8 press-start text-primary">
+                    COMING SOON...
+                </h2>
+                
+                <p class="text-xl mb-12 max-w-2xl mx-auto">
+                    The Redongler™ is currently in development. Join our waitlist to be the first to know when we launch and get early access to beta testing.
+                </p>
+                
+                <div class="bg-dark p-8 rounded-lg max-w-lg mx-auto">
+                    <h3 class="text-2xl font-bold mb-6 silkscreen text-primary">
+                        GET NOTIFIED
+                    </h3>
+                    
+                    <form action="https://docs.google.com/forms/d/e/1FAIpQLScz6zmcJd4iIQn6llY03oxlVa1b39d2apfIBth19H7HPf7P0g/viewform?usp=sharing&ouid=107867435674576654181" method="POST" target="_blank" class="space-y-4">
+                        <div>
+                            <input type="text" name="entry.1234567890" placeholder="Your Name" class="w-full px-4 py-3 bg-black border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <input type="email" name="entry.0987654321" placeholder="Your Email" required class="w-full px-4 py-3 bg-black border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary">
+                        </div>
+                        <div>
+                            <textarea name="entry.1122334455" placeholder="Tell us about your saddest orphaned peripheral..." class="w-full px-4 py-3 bg-black border-2 border-primary rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-24"></textarea>
+                        </div>
+                        <button type="submit" class="btn-primary w-full px-8 py-3 bg-primary text-white font-bold rounded-md silkscreen text-lg">
+                            JOIN THE WAITLIST
+                        </button>
+                    </form>
+                </div>
+                
+                <div class="mt-12 flex justify-center gap-6">
+                    <a href="#" class="text-2xl text-light hover:text-primary transition-colors">
+                        <i class="fab fa-github"></i>
+                    </a>
+                    <a href="#" class="text-2xl text-light hover:text-primary transition-colors">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-2xl text-light hover:text-primary transition-colors">
+                        <i class="fab fa-discord"></i>
+                    </a>
+                    <a href="#" class="text-2xl text-light hover:text-primary transition-colors">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Footer -->
+        <footer class="py-12 px-8 text-center">
+            <div class="max-w-4xl mx-auto">
+                <div class="mb-6">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="mx-auto text-primary">
+                        <rect x="5" y="2" width="14" height="20" rx="7"></rect>
+                        <path d="M12 6v4"></path>
+                    </svg>
+                </div>
+                <p class="text-light mb-4">
+                    The REDONGLER™ is a product made by a person, just like the one reding this ow, who thought "this is stupid. there MUST be a better way", was told 'no', didn't take 'no' as a valid answer, and found out THERE WAS. No billionaires were coersced into the making of this project. 
+                </p>
+                <p class="text-secondary text-sm">
+                    © 2025 The Redongler™ | No Dongle Left Behind
+                </p>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // Initialize Three.js background
+        document.addEventListener('DOMContentLoaded', function() {
+            // Three.js setup
+            const container = document.getElementById('threejs-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            container.appendChild(renderer.domElement);
+            
+            // Particles
+            const particlesGeometry = new THREE.BufferGeometry();
+            const particleCount = 1000;
+            
+            const posArray = new Float32Array(particleCount * 3);
+            const colorArray = new Float32Array(particleCount * 3);
+            
+            for(let i = 0; i < particleCount * 3; i++) {
+                posArray[i] = (Math.random() - 0.5) * 10;
+                colorArray[i] = Math.random();
+            }
+            
+            particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorArray, 3));
+            
+            const particlesMaterial = new THREE.PointsMaterial({
+                size: 0.05,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                blending: THREE.AdditiveBlending
+            });
+            
+            const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+            scene.add(particlesMesh);
+            
+            camera.position.z = 5;
+            
+            // Mouse follower
+            const mouseFollower = document.querySelector('.mouse-follower');
+            document.addEventListener('mousemove', (e) => {
+                mouseFollower.style.left = e.clientX + 'px';
+                mouseFollower.style.top = e.clientY + 'px';
+                
+                // Make particles react to mouse
+                particlesMesh.rotation.x = e.clientY * 0.0005;
+                particlesMesh.rotation.y = e.clientX * 0.0005;
+            });
+            
+            // Click effects
+            document.addEventListener('click', (e) => {
+                // Create ripple effect
+                const ripple = document.createElement('div');
+                ripple.style.position = 'fixed';
+                ripple.style.width = '20px';
+                ripple.style.height = '20px';
+                ripple.style.backgroundColor = '#ff3366';
+                ripple.style.borderRadius = '50%';
+                ripple.style.left = e.clientX + 'px';
+                ripple.style.top = e.clientY + 'px';
+                ripple.style.transform = 'translate(-50%, -50%) scale(0)';
+                ripple.style.opacity = '0.7';
+                ripple.style.pointerEvents = 'none';
+                document.body.appendChild(ripple);
+                
+                // Animate ripple
+                gsap.to(ripple, {
+                    scale: 20,
+                    opacity: 0,
+                    duration: 1,
+                    ease: 'power2.out',
+                    onComplete: () => ripple.remove()
+                });
+                
+                // Change particle colors on click
+                for(let i = 0; i < colorArray.length; i++) {
+                    colorArray[i] = Math.random();
+                }
+                particlesGeometry.attributes.color.needsUpdate = true;
+            });
+            
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                particlesMesh.rotation.x += 0.001;
+                particlesMesh.rotation.y += 0.001;
+                
+                renderer.render(scene, camera);
+            }
+            animate();
+            
+            // Smooth scrolling
+            const scrollbar = Scrollbar.init(document.querySelector('.scroll-container'), {
+                damping: 0.05,
+                renderByPixels: true,
+                continuousScrolling: true
+            });
+            
+            // Update scrollbar thumb color
+            scrollbar.track.xAxis.element.classList.add('scrollbar-track');
+            scrollbar.track.yAxis.element.classList.add('scrollbar-track');
+            scrollbar.thumb.xAxis.element.classList.add('scrollbar-thumb');
+            scrollbar.thumb.yAxis.element.classList.add('scrollbar-thumb');
+            
+            // Navigation dots
+            const sections = document.querySelectorAll('section');
+            const dots = document.querySelectorAll('.nav-dot');
+            
+            function updateActiveDot() {
+                const scrollPos = scrollbar.offset.y;
+                
+                sections.forEach((section, index) => {
+                    const sectionTop = section.offsetTop;
+                    const sectionHeight = section.offsetHeight;
+                    
+                    if(scrollPos >= sectionTop - 100 && scrollPos < sectionTop + sectionHeight - 100) {
+                        dots.forEach(dot => dot.classList.remove('active'));
+                        dots[index].classList.add('active');
+                    }
+                });
+            }
+            
+            scrollbar.addListener(updateActiveDot);
+            updateActiveDot();
+            
+            // Dot click navigation
+            dots.forEach((dot, index) => {
+                dot.addEventListener('click', () => {
+                    scrollbar.scrollIntoView(sections[index], {
+                        offsetTop: -50
+                    });
+                });
+            });
+            
+            // Responsive adjustments
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+            
+            // Typewriter effect
+            const typewriter = document.querySelector('.typewriter');
+            setTimeout(() => {
+                typewriter.style.borderRight = 'none';
+            }, 3500);
+        });
+    </script>
+</body>
+</html>
